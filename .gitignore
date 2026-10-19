@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# SDD scratch (review packages) - never committed
+.superpowers/
+
+# Evaluation working material lives in the private project repository, not here.
+benchmark/
+
+# The western-Med sample data file is not distributed with this repository. A local copy placed in
+# data/netcdf-samples/ is listed next to the region mask.
+data/netcdf-samples/westmed-2013-2017-biomass-catch-sales.nc

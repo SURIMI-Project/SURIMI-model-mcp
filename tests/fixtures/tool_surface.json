@@ -1,0 +1,745 @@
+[
+ {
+  "description": "List data sources, tools, and usage hints for this SURIMI model-output MCP server.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {},
+   "type": "object"
+  },
+  "name": "describe_model_capabilities"
+ },
+ {
+  "description": "Check CF-conventions compliance with a heuristic: a Conventions attribute that starts with CF, and latitude and longitude coordinates. A data variable without units gives a warning only.\n\n`file` is accepted as an alias for `path`.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "file": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "path": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_check_cf_compliance"
+ },
+ {
+  "description": "Compare two time-index ranges per region.\n\nperiod_a and period_b are (start_step, end_step_inclusive) indices.\nop is 'diff' (B - A) or 'ratio' (B / A).\n`select` picks one coordinate value on an extra non-time, non-spatial axis;\nan unselected one is reported in `unselected_dims`.\n`region` restricts the comparison to one region name; omitted, every region\nin the mask is compared.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "file": {
+     "type": "string"
+    },
+    "mask_file": {
+     "type": "string"
+    },
+    "op": {
+     "default": "diff",
+     "type": "string"
+    },
+    "period_a": {
+     "maxItems": 2,
+     "minItems": 2,
+     "prefixItems": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "integer"
+      }
+     ],
+     "type": "array"
+    },
+    "period_b": {
+     "maxItems": 2,
+     "minItems": 2,
+     "prefixItems": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "integer"
+      }
+     ],
+     "type": "array"
+    },
+    "region": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "select": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "var": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "file",
+    "var",
+    "period_a",
+    "period_b",
+    "mask_file"
+   ],
+   "type": "object"
+  },
+  "name": "model_compare_periods"
+ },
+ {
+  "description": "Structure of an EwE (Ecopath with Ecosim) model export (.eiixml):\nmodel name, EwE/DB version, the full table inventory (name + declared\nrow/column count for every table in the file), and the functional-group\nNAMES from the EcopathGroup table. Metadata and group names ONLY - never\nthe diet-composition matrix or Ecosim scenario tables, which this tool\ndoes not read at all.\n\nCall with no argument first to see which models exist (`models`, live\nfrom object storage - never a hardcoded list, so a newly-uploaded model\nappears without a server update). Call again with a `name` (matches\neither the model's internal name or its filename, case-insensitively)\nfor the full table inventory of one model.\n\n`functional_groups.declared_row_count` is the EcopathGroup table's Num\nattribute as the file states it; `functional_groups.names_found`/`names`\nare what this tool actually read from the file's `<Row>` elements. These\ntwo numbers can differ - see `functional_groups.note` when they do, and\nreport `names_found`, not `declared_row_count`, as how many functional\ngroups are actually nameable here.\n\nThis is SURIMI ensemble model CONFIGURATION, not a simulation result -\nrunning or solving the model is out of scope for this tool.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_describe_ecosystem_model"
+ },
+ {
+  "description": "Return the full structure of a netcdf file: dimensions, variables, global attributes and the file's sha256.\n\n`file` is accepted as an alias for `path`.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "file": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "path": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_describe_file"
+ },
+ {
+  "description": "Describe one simulation run: its artifacts plus parsed metadata.\n\nReturns {model, simulation_id, n_artifacts, last_modified, metadata,\nartifacts:[{name, size, kind, access}], stale, note, partial,\npartial_note} - or {error, stale, note, partial, partial_note} if no\nmatching run is found. `access` is 'inline' for text you can fetch with\nmodel_get_artifact, or 'link' for any other file, which\nmodel_get_artifact returns as a download link.\n`metadata` is model-specific: for CMSY it names the STOCK the run\nassessed - read it and report it, because the stock decides what the\nrun is about. stale=true means object storage was unreachable and\nn_artifacts, last_modified, and every artifact `size` come from the\nlast good listing, not a fresh one - say so rather than presenting them\nas current. partial=true means some objects were dropped from even a\nfresh listing, so this run's artifact count/manifest may be short - say\nthat too. An \"error: no simulation with id ...\" while stale or partial\nis true is NOT proof the run does not exist - it may simply be missing\nfrom a degraded or short listing; say that rather than asserting the\nrun does not exist.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "simulation_id": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "simulation_id"
+   ],
+   "type": "object"
+  },
+  "name": "model_describe_simulation"
+ },
+ {
+  "description": "What a CMSY++ id_file.csv input or result-table column means and\nwhat it decides - the vocabulary model_get_stock_status/\nmodel_get_stock_trajectory assume the caller already has.\n\nCovers, at minimum, 'btype', 'force.cmsy' and 'Resilience' (the three\nid_file.csv fields that change which estimator runs or how), plus the\nyear-encoded result columns ('c50', 'F.Fmsy00', 'B30', ...: decodes the\ntwo-digit year the same way model_get_stock_trajectory does, including\nthe century wrap at 50) and a handful of named result-table columns\n('N bt', 'last.B_Bmsy', 'last.F_Fmsy'). Definitions are sourced from\nGSA06_CMSY++_input files/README.txt and AA_CMSY++.R's own validation -\nnot invented - and each entry cites where.\n\nField names are matched case-insensitively with spaces/underscores\ntreated as '.', so 'btype', 'BType' and 'b_type' all resolve the same\nentry. An unmatched field returns {error, known_fields} naming every\nfield this tool DOES know, rather than a silent guess.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "field": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "field"
+   ],
+   "type": "object"
+  },
+  "name": "model_explain_assessment_field"
+ },
+ {
+  "description": "Fetch one artifact from a run.\n\nText (csv, R, yaml, tex, ...) comes back inline as {kind:'text', name,\ncontent, truncated, stale, note, partial, partial_note} - plus\n`truncation_note` when truncated=true. Any other file (pdf, jpg, nc) comes\nback as {kind:'link', name, url, stale, note, partial, partial_note}. The\n`url` points to this server's /artifact route, which serves the file from\nthe server's local cache, so it is a download link to give the user and\nNOT something to describe the contents of. The `url` is absolute when the\ndeployment sets SURIMI_PUBLIC_BASE_URL and relative to this server\notherwise. Never claim to have read a PDF. stale=true means the run\nwas looked up in a degraded (last-good) listing because object storage\nwas unreachable when it was scanned - the artifact itself is still\nread from the server, but say the listing that found it may be outdated\nrather than presenting it as current. partial=true means some objects\nwere dropped from even a fresh listing, so a \"not an artifact of this\nrun\" error may reflect a short manifest rather than the file truly being\nabsent - say so instead of asserting it does not exist. truncated=true\nmeans `content` is a PREFIX of the file, cut at a fixed byte cap,\npossibly mid-field or mid-row: never count, total, or summarise it as if\nit were the whole file - a 46,436-row CSV can come back showing ~3,761\nrows, and counting those and reporting \"3,761 rows\" states a number that\nis wrong, not merely incomplete. Only quote from what is shown, and say\nthe file was truncated.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "filename": {
+     "type": "string"
+    },
+    "simulation_id": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "simulation_id",
+    "filename"
+   ],
+   "type": "object"
+  },
+  "name": "model_get_artifact"
+ },
+ {
+  "description": "The case-study contract: what SURIMI can model, over what area,\nperiod, in what units, coded how. Parses\ncontroller/northwestern_med/northwestern_med_contract.yaml: case study name,\nstart/end date, time step, CRS + grid (resolution, dimensions, bbox),\nthe standards block (which code standard each field uses - species,\ngear, life stage, market, currency, country, measurement system/units),\nmarket codes, currency codes, and counts of the species/fleet-segment\nentries the contract lists. `fleet_segments` carries each segment's own\n`model` assignment (\"EwE\" or \"POSEIDON\") - a per-fleet LABEL only: the\ncontroller calls both services unconditionally for every fleet every\nstep, so this field says which model a fleet is ASSIGNED to for\nafter-the-fact splitting, not a switch that turns either model off.\n\n`divergence_note` is present on every response and must not be dropped\nwhen relaying this: it says that this is the northwestern_med contract,\nthat the bucket holds others (aegean_sea, anchovy_bay) which this tool\ndoes not read, and that the older western_med copy no longer exists.\n\nThis is model configuration, not a simulation result.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {},
+   "type": "object"
+  },
+  "name": "model_get_contract"
+ },
+ {
+  "description": "Per-variable NaN counts and fraction. A very large variable is estimated from sampled steps and carries `sampled` true, with no exact count.\n\n`file` is accepted as an alias for `path`.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "file": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "path": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_get_coverage_summary"
+ },
+ {
+  "description": "Return lat/lon extents and grid sizes.\n\n`file` is accepted as an alias for `path`.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "file": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "path": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_get_spatial_bounds"
+ },
+ {
+  "description": "Current Kobe status (B/Bmsy, F/Fmsy, reference points) from a CMSY++\nresult table.\n\n`phase` has NO default - it must be 'historical' (assessed from real\ncatch/abundance data) or 'simulation' (assessed from ecosystem-model-\nsimulated data, SURIMI-CMSY/server/StockAssessment.py's second run). A\nrun that carries no CMSY_output_historical.csv/CMSY_output.csv split at\nall, only one unlabelled Out_..._id_file.csv result table, is refused for\nEITHER phase rather than guessed. The error names that file so the\ncaller can fetch it directly with model_get_artifact instead of trusting\na label this tool invented.\n\nReturns {stock, phase, source_file, btype, n_abundance_years, estimator,\nestimator_note, biomass_ratio_to_bmsy, fishing_pressure_ratio_to_fmsy,\nreference_points: {Bmsy, Fmsy, MSY}, stale, note, partial, partial_note}\non success, or {error, stale, note, partial, partial_note} otherwise.\n\nEvery point estimate (biomass_ratio_to_bmsy, fishing_pressure_ratio_to_fmsy,\nand each reference point) comes back as {point, lcl, ucl, bound_meaning} -\nNEVER the point alone. `bound_meaning` says outright that lcl/ucl are the\n2.5th/97.5th percentile of the MCMC posterior, not a confidence interval\nat any stated level - the CMSY++ column names (\"lcl\"/\"ucl\") suggest a\nconfidence limit, but AA_CMSY++.R never states one, so report the bound\nthat way rather than repeating the column's own naming.\n\n`estimator` names which of AA_CMSY++.R's two fits (CMSY, catch only, or\nBSM, catch + abundance index) the reported numbers came from, decided by\nthe SAME rule model_explain_assessment_field('btype') documents: BSM\nonly when btype != 'None' AND at least 5 usable abundance-index years\nexist in the assessment window, CMSY otherwise regardless of the btype\nlabel. `estimator_note` explains the specific reason for this run, and\nsays outright that a run's id_file.csv force.cmsy=TRUE would override\nthis even when BSM's own gate is met - a fact this tool cannot verify\nbecause force.cmsy is an id_file.csv INPUT column, never written into\nthe 349-column result row this tool reads.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "phase": {
+     "type": "string"
+    },
+    "simulation_id": {
+     "type": "string"
+    },
+    "stock": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "simulation_id",
+    "stock",
+    "phase"
+   ],
+   "type": "object"
+  },
+  "name": "model_get_stock_status"
+ },
+ {
+  "description": "Year-indexed catch/F.Fmsy/B series from a CMSY++ result table.\n\nSame `simulation_id`/`stock`/`phase` contract, lookup and refusal\nbehaviour as model_get_stock_status (see its docstring) - `phase` has no\ndefault and a run with no historical/simulated split is refused by name\nrather than guessed.\n\nReturns {stock, phase, source_file, trajectory: [{year, catch, f_fmsy,\nb}, ...], stale, note, partial, partial_note}. `trajectory` is sorted by\nthe DECODED year, oldest first - AA_CMSY++.R names its year columns\nc50..c99 (1950-1999) then c00..c30 (2000-2030) in the SAME row, so\nsorting the column names themselves would put 2000 before 1950. Years\nwhere catch, F/Fmsy and B are all NA (the schema reaches to 2030\nunconditionally, but a stock assessed only through, say, 2012 leaves\nevery later column empty) are dropped rather than returned as a row of\nnulls - do not report \"data through 2030\" from this response's shape.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "phase": {
+     "type": "string"
+    },
+    "simulation_id": {
+     "type": "string"
+    },
+    "stock": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "simulation_id",
+    "stock",
+    "phase"
+   ],
+   "type": "object"
+  },
+  "name": "model_get_stock_trajectory"
+ },
+ {
+  "description": "Return start/end of the time axis as raw values with their units, and decoded to calendar dates (`start_iso`, `end_iso`, `start_year`, `end_year`) when the axis has usable CF units.\n\n`file` is accepted as an alias for `path`.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "file": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "path": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_get_time_range"
+ },
+ {
+  "description": "List the netcdf catalog so you can find a file from a plain question.\n\nReturns {prefix, count, files:[{uri, size, kind}]} where kind is\n'data', 'mask', or 'other', plus `notes` when a source could not be\nlisted and `stale` and `as_of` when a saved listing was served. Call this FIRST when asked about ocean/\nbiomass/gridded data, then model_describe_file on a chosen 'data' file to\nsee its variables, then an analytical tool (e.g. model_top_regions) with a\nmatching 'mask' file. Defaults to the SURIMI netcdf bucket prefix.\n\nA file a SURIMI run wrote also carries `simulation_id` and `model`, so you\ncan go from the file to model_describe_simulation without guessing.\n\nA 'data' entry that is already cached on this server also carries\n`variables`, each with its name, units and long_name, so you can pick the\nfile that holds what was asked for without opening them one by one. An\nentry that is not cached yet carries `variables_note` instead, which says\nto call model_list_variables on it, and an entry that could not be read\ncarries `variables_error`. Judge a file by its variables, not by its\nfilename: a file named for an external model can still hold the variable\nthe question needs.\n\nEach 'data' entry also carries `origin`. `surimi-run` is output a SURIMI run\nwrote. `external-or-reference` is data served for comparison and is NOT a\nSURIMI result: an answer built on it must name the file it came from and\nmust not present it as what SURIMI found. `surimi-sample` is real SURIMI\noutput bundled with this server rather than held in S3 -- currently just\nthe western-Med sample -- readable through this server exactly like any\nother 'data' entry.\n\nThe default listing (no `prefix`) also carries every file bundled under\nthis server's own data/netcdf-samples/ directory, regardless of what the\nS3 prefix scan finds. When SURIMI_LOCAL_NETCDF_SAMPLES additionally names\nan operator-supplied local directory, its .nc files are merged in too --\norigin `external-or-reference`, not `surimi-sample`: unlike the bundled\ndirectory, a file's presence there is not verified to be the genuine\nsample just because it shares a name with one.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "prefix": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_list_files"
+ },
+ {
+  "description": "List the named regions in a mask file so you can pick a region by name.\n\nReturns {mask_file, n_regions, regions:[{name, n_cells}]}. Call this BEFORE\nmodel_time_series or model_trend (which take a region NAME), and to know\nwhich regions model_top_regions will rank. Do NOT guess region names or call\nmodel_top_regions on the mask itself to discover them.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "mask_file": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "mask_file"
+   ],
+   "type": "object"
+  },
+  "name": "model_list_regions"
+ },
+ {
+  "description": "List SURIMI simulation runs found in object storage, newest first.\n\nCall this FIRST for any question about a model RUN or experiment. Returns\n{count, simulations:[{model, simulation_id, n_artifacts, last_modified,\nkinds, summary, stock}], scanned, as_of, stale, note, partial,\npartial_note, denied_run_like_keys, denied_note, summaries_omitted,\nsummaries_omitted_note, summaries_failed, summaries_failed_note}.\n`scanned` lists which models actually have at least one run right now -\nthat is what answers \"which models have runs\". `model` filters to one\nmodel (e.g. 'surimi-cmsy'). Then call model_describe_simulation on a\nsimulation_id to see full artifact/metadata detail for just that run.\n\n`summary` is a short, human-readable line built from the run's own\nparsed metadata - for CMSY, the STOCK plus year range and biomass type\n(e.g. \"Hogfish - Florida Keys, 1986-2012, CPUE\"); for market, its\nconfig-file coverage. Read `summary` (and `stock`) here to answer \"what\nis run X about\" / \"which stock did it assess\" WITHOUT calling\nmodel_describe_simulation on every run in the list - that is the whole\npoint of this field. `summary` is null when the model has no parser,\nthe parser found nothing to say, or the parse was refused (a truncated\nor ambiguous id_file.csv) - null always means unknown, never a\nplaceholder or a guess; do not infer a stock from a filename yourself.\n`stock` sits alongside `summary` only for runs where a stock was\nactually determined (CMSY today) - read `stock`, not `summary`, when\nasked specifically \"which stock\". A run beyond the newest ones\nsummarised in this call does not carry a `summary` key AT ALL - that is\ndifferent from `summary: null` (\"attempted, nothing to report\") - the\ntop-level `summaries_omitted` count says how many were skipped to bound\ncost this call, and `summaries_omitted_note` explains; call\nmodel_describe_simulation directly on any of those by simulation_id.\n\n`summaries_failed` counts runs (within this call's summarised set)\nwhose summary could NOT be computed this call because of a storage\nerror while fetching - a property of the moment (a network blip, an\nexpiring STS token), not a fact about the run - rather than a\ndeliberate parser refusal. Those runs show `summary: null` exactly like\na genuine refusal, but are retried on the next call rather than staying\nnull forever - do not treat their null as a final answer the way a real\nrefusal's null is; say the summary was unavailable this call rather\nthan that the run has none. `summaries_failed_note` explains when it is\nabove zero.\n\nA COLD call (nothing cached yet) fetches summaries for up to\n_SUMMARY_CAP runs concurrently, which can still take a few seconds even\nthough it is no longer one round trip per run done in series - mention\nthat a first call may be slower than a later one rather than assuming\nevery call is instant.\n\nstale=true means object storage was unreachable and this is the\nlast good listing - say so rather than presenting it as current.\npartial=true means some objects could not be listed even in a fresh\nscan, so counts here (n_artifacts, kinds) may be short - say that too,\ndo not present them as exact. denied_run_like_keys is a COVERAGE hint,\nnot a degradation - this listing itself is correct and current - it\ncounts objects that look like simulation runs but sit under a\ndeliberately-excluded area of storage (housekeeping/lake prefixes, e.g.\n\"raw/\", \"processed/\") and so are never scanned for runs at all. When it\nis above zero, mention that some run-like objects exist outside the\nscanned area (see denied_note) rather than implying this listing is the\nentire ensemble's coverage.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "model": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_list_simulations"
+ },
+ {
+  "description": "List data variables in a netcdf file with shapes, dtypes, units.\n\n`file` is accepted as an alias for `path`.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "file": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "path": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "type": "object"
+  },
+  "name": "model_list_variables"
+ },
+ {
+  "description": "Resolve a reference-vocabulary code to its meaning. Read this FIRST for\n\"what species is ANK\" / \"what does gear code X mean\" / \"what country is\nESP\" - never guess a code's meaning from memory, this tool is the source\nof truth for what the FAO/ISSCFG/ISO standards actually say.\n\n`kind` is one of \"species\" (FAO 3-alpha, cross-referenced to WoRMS\ntaxonomy and FishBase common name when they join), \"gear\" (ISSCFG\nfishery/gear code), or \"country\" (ISO 3166-1 alpha-3) - or omitted to\nsearch all three. Omitting `kind` does NOT guess a domain from the\ncode's shape; it checks all three vocabularies and reports every REAL\nhit. This matters because the vocabularies genuinely collide: FAO\nspecies codes and ISO country codes share the same 3-letter alphabet, so\ne.g. \"ESP\" is both Spain (ISO 3166) and Setipinna phasa / Gangetic\nhairfin anchovy (FAO/ASFIS) - a real collision, not a bug. When more than\none domain matches, `ambiguous: true` and `matches` lists all of them;\nread `ambiguity_note` and do not present either as THE answer without\npicking a domain via `kind`. When exactly one domain matches (the common\ncase), its fields are merged directly into the top-level result.\n\nAn unknown code returns `found: false` with `suggestions` - real entries\nfrom the searched vocabulary/vocabularies that are textually close, from\ndifflib against the actual code list, never an invented name. An empty\n`suggestions` list means nothing close was found either; still not a\nguess.\n\n`degraded` (only present when non-empty) lists which underlying source(s)\ncould not be loaded this call - a network blip or expiring STS token,\nnot proof the code does not exist; a real answer from an unaffected\nsource can still appear alongside a `degraded` entry for one that\nfailed.\n\nThese are external standards (FAO/ISSCAAP, ISSCFG, WoRMS, FishBase, ISO\n3166) the SURIMI project consumes for coding its own data - not SURIMI\noutput.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "code": {
+     "type": "string"
+    },
+    "kind": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "code"
+   ],
+   "type": "object"
+  },
+  "name": "model_lookup_code"
+ },
+ {
+  "description": "B/Bmsy and F/Fmsy per stock from a run's NetCDF (stock_status,\nexploitation on year x species), with each stock's Kobe position.\n\nUse this for the status of WESTERN MEDITERRANEAN stocks in SURIMI's\nruns: whether a stock is overfished, has improved or deteriorated, or is\nrecovering. It reads the first NetCDF file of the run. Without `stock` it\nreturns every stock's position in `year` (default: the last year) and the\ncount per Kobe quadrant, which answers \"the stock\" when no stock was\nnamed. With `stock` (a code such as \"HKE\", or a label such as \"HKE\nadult\") it returns that stock's position in `year` (default: its latest\nyear), its first assessed year and its full trajectory.\n\nReturns {simulation_id, source_file, semantics_note, year, n_stocks,\ncounts, stocks} or {simulation_id, source_file, semantics_note, stock,\nfirst_assessed_year, latest: {year, b_bmsy, f_fmsy, kobe}, trajectory},\nplus stale/note/partial/partial_note; or {error, ...}. Read\nsemantics_note before reporting: there are no uncertainty bounds, and\nhistorical and simulated years are not distinguished.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "simulation_id": {
+     "type": "string"
+    },
+    "stock": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "year": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "simulation_id"
+   ],
+   "type": "object"
+  },
+  "name": "model_run_stock_status"
+ },
+ {
+  "description": "Reverse lookup: a species name or fragment to codes, searched\ncase-insensitively across ASFIS (scientific + English name), WoRMS\n(scientific name), and FishBase (common name + binomial). Use this when\nyou have a name, not a code - e.g. \"what's the FAO code for anchovy\".\n\nEach result carries `source` (\"asfis\" | \"worms\" | \"fishbase\") so a\ncaller can tell an FAO alpha-3 code apart from a FishBase common-name\nhit rather than assuming every result is the same kind of thing.\n\nAll three sources are searched in full and results are RANKED BY MATCH\nQUALITY, then capped at `limit` total (not `limit` per source). A name\nthat contains the query as a word (\"Red hake\" for \"hake\") always outranks\none that merely contains it inside a longer word (\"Capoetobrama\nkuschakewitschi\"); an exact whole-name match outranks both. Equal matches\nare ordered by whether FAO keeps capture statistics for the species, then\nsource, then alphabetically.\n\n`total_matches` appears when the cap hid results. Treat a large value as\n\"the query is ambiguous, not answered\": 21 ASFIS species are named\n\"... hake\", so ranking cannot know which one is meant - narrow the query\n(a binomial, or the full common name) rather than reporting the first hit\nas THE answer.\n\n`degraded` (only present when non-empty) names any source that could not\nbe searched this call; results from unaffected sources still come back.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "limit": {
+     "default": 10,
+     "type": "integer"
+    },
+    "name": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "name"
+   ],
+   "type": "object"
+  },
+  "name": "model_search_taxon"
+ },
+ {
+  "description": "Time series of `var` within one region, returned as a compact cube slice.\n\nReturns a `summary` (n_points, n_valid, value_start/end/min/max/mean,\nslope_per_step, direction) and `by_year` (one pivotable row per calendar\nyear: {year, value, n_steps}) plus provenance. Present the summary and the\nby_year rows (a small table or chart); cite the single calculation record\n(receipt) for the whole block. By default the raw per-step series is NOT returned -- a global file\nhas hundreds of monthly steps and enumerating them floods the reply. For\n\"is it increasing/decreasing\" or \"what is the trend\" use model_trend (it\nadds a significance test and reads the full series internally).\n\n`points_for_years` is [first_year, last_year], both inclusive, and adds\n`points` (one {t, value, year} per timestep in that window) plus\n`points_window`. Ask for it ONLY when the question needs resolution finer\nthan a year -- a seasonal cycle, which month a peak fell in, a spike inside\none year -- because by_year has already averaged that away. Keep the window\nto the years actually asked about: a window over 120 timesteps is refused,\nnot trimmed. The summary and by_year still cover the WHOLE series, so do\nnot read a windowed `points` as the full record.\n\n`select` picks one coordinate on an extra dimension, e.g.\n{\"species\": \"herring\"}. A value found at several positions is refused,\nand the error names the positions, so pass the position number instead.\nOmitted on a variable that has such a dimension, the value AVERAGES\nacross it and the reply names the dimension in `unselected_dims`.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "agg_per_step": {
+     "type": "string"
+    },
+    "file": {
+     "type": "string"
+    },
+    "mask_file": {
+     "type": "string"
+    },
+    "points_for_years": {
+     "anyOf": [
+      {
+       "items": {
+        "type": "integer"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "region": {
+     "type": "string"
+    },
+    "select": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "var": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "file",
+    "var",
+    "region",
+    "agg_per_step",
+    "mask_file"
+   ],
+   "type": "object"
+  },
+  "name": "model_time_series"
+ },
+ {
+  "description": "Top N regions by aggregated value of `var`, optionally within one year.\n\nWhen `year` is given, only that calendar year's timesteps are loaded\n(lazy .isel before .values), so global multi-decade files do not blow\nmemory. When `year` is omitted on a file that spans MULTIPLE years, the\nmost recent year THAT ACTUALLY HAS DATA is used automatically (reported in\nprovenance.year with year_defaulted=true + a coverage note) -- aggregating\nevery year of a global file is slow enough to time out. Pass an explicit\nyear to cover a different period; an explicit year is always honoured as\ngiven, even if it is empty. Returns a rank-ordered list with values,\nprovenance, and coverage.\n\n`agg` defaults to \"mean\": it previously had no default, so the natural\ntool call omitted it and died on argument validation before reaching data.\n\n`select` is {dimension: coordinate_value} for any extra non-time,\nnon-spatial axis the variable carries (species, functional group, fleet).\nWithout it a catch variable shaped (time, species, lat, lon) is averaged\nacross cod and herring into one number belonging to neither, so when such a\ndimension is left unselected the result carries coverage.unselected_dims\nand a note listing the dimension and its values.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "agg": {
+     "default": "mean",
+     "type": "string"
+    },
+    "file": {
+     "type": "string"
+    },
+    "mask_file": {
+     "type": "string"
+    },
+    "n": {
+     "type": "integer"
+    },
+    "select": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "var": {
+     "type": "string"
+    },
+    "year": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "file",
+    "var",
+    "n",
+    "mask_file"
+   ],
+   "type": "object"
+  },
+  "name": "model_top_regions"
+ },
+ {
+  "description": "Estimate a monotonic trend with Mann-Kendall + linear slope.\n\nPREFERRED for \"is X increasing/decreasing\", \"what is the trend\", or \"how has\nX changed over time\" questions. Returns a compact result: slope (linear\nregression on time index), Mann-Kendall p_value, a categorical direction\n(increasing/decreasing/no_trend), n (valid points), and n_missing (NaN gaps\nskipped). Answer directly from these fields.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "file": {
+     "type": "string"
+    },
+    "mask_file": {
+     "type": "string"
+    },
+    "region": {
+     "type": "string"
+    },
+    "select": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "var": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "file",
+    "var",
+    "region",
+    "mask_file"
+   ],
+   "type": "object"
+  },
+  "name": "model_trend"
+ },
+ {
+  "description": "Check that a region mask sits on the same lat/lon grid as the data file.\n\nReturns {aligned: bool, mismatches: [...]} naming each axis that differs\n('lat'/'lon' for a differing axis, 'lat_missing'/'lon_missing' when a file\ncarries no such coordinate). An axis matches when its shape is equal and its\nvalues agree within 1e-3. model_top_regions, model_time_series,\nmodel_compare_periods and model_trend apply the mask cell by cell without\nre-projecting it, so each runs this check first and refuses a mask on a\ndifferent grid. Call this to see which axis differs, and whenever a data\nfile and a mask come from different sources. If aligned is False, report\nthe mismatch and give no regional numbers for that pair.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "data_file": {
+     "type": "string"
+    },
+    "mask_file": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "data_file",
+    "mask_file"
+   ],
+   "type": "object"
+  },
+  "name": "model_validate_alignment"
+ },
+ {
+  "description": "Verify a signed calculation record (the `receipt`) against the server's signing key.\n\nReturns {verified, reason, verification_method, recompute_supported,\nrecompute_note}. `verification_method` is always \"signature_only\" here:\nthis server has no recompute path for any tool, so a passing check means\nthe record is unaltered since issue, NOT that the number was recomputed.\nThat is a weaker claim and the two must not be confused.\n\nA signature mismatch returns verified false and does not raise, and so does\na server with no signing key (reason \"secret_not_configured\"). Records\nissued before the model/data rename carry legacy nc_* tool_ids; those still\nverify unchanged, because the signature covers the stored payload, not the\ncurrent tool name.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "receipt": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "required": [
+    "receipt"
+   ],
+   "type": "object"
+  },
+  "name": "model_verify"
+ }
+]
